@@ -1,16 +1,18 @@
 (ns uolueris.core
+  (:import [java.net IDN])
   (:gen-class))
 
+;; EXAMPLE : korean unicode url : 실례.테스트
 ;; not till 1<<8 cos' there is not interesting char after 122 (\z)
 (def byte-masks
   (map #(bit-shift-left 1 %) (range 7)))
 
 (defn toggle-bit-mask [char-val]
   (fn [mask]
-    (bit-and 255
-             (if (bit-test char-val mask)
-               (bit-clear char-val mask)
-               (bit-set char-val mask)))))
+    (bit-and 0xff
+             ((if (bit-test char-val mask)
+               bit-clear
+               bit-set) char-val mask))))
 
 (defn bit-squatting [c]
   (let* [char-val (int c)
@@ -20,7 +22,7 @@
      byte-masks)))
 
 (def allowed-reg #"[\.\-A-Za-z0-9]")
-(defn uniq-bit-squatting-char [c]
+(defn uniq-squatting-char [c]
   (filter #(and
             (not= c %)
             (re-matches allowed-reg (str %)))
@@ -28,7 +30,9 @@
            (map char
                 (bit-squatting c)))))
 
-(defn replace-by-squat [s n]
+(def mem-uniq-squatting-char (memoize uniq-squatting-char))
+
+(defn replace-id-by-squat [s n]
   (fn [squat]
     (let [sb (StringBuilder. s)
           squat-str (str squat)]
@@ -37,10 +41,10 @@
 (defn single-bit-squatting [name]
   (flatten (map
             (fn [idx]
-              (map (replace-by-squat name idx)
-                   (uniq-bit-squatting-char (get name idx)))) ;; TODO build a static bit squatting dict
+              (map (replace-id-by-squat name idx)
+                   (mem-uniq-squatting-char (get name idx)))) ;; TODO build a static bit squatting dict
             (range (count name)))))
 
 (defn -main
   [& args]
-  (single-bit-squatting (first args)))
+  (single-bit-squatting (IDN/toASCII (first args))))
